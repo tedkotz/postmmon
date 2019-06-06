@@ -1,0 +1,340 @@
+#! /usr/bin/perl
+
+# postmmon - POSTfix Mailbox MONitor
+# Program to monitor Postfix mailbox sizes
+#
+#    Copyright (C) <2003>  <Ricardo Malafaia/Eduardo Mendes>
+
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See 
+#   the GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+#   More info: http://www.gnu.org or http://www.gnu.org/licenses/gpl.txt
+
+# Program to monitor Postfix mailbox sizes
+# NOTE: The program MUST run under CRON, otherwise it won't
+# be all that helpful
+
+# Nova Prestech.Net http://www.prestech.net
+# Developed and coded by Ricardo Malafaia (ricardo@prestech.net)
+# Original idea and blames by Eduardo Mendes (mendes@prestech.net) :)
+# V 0.0.6 / 17/jul/2003 (gotta get the habit of using CVS...)
+
+# Project's Homepage: http://www.prestech.net/projetos/postmmon
+
+# Look out for the following parameters when configuring postmmon
+# for your system.  Don't be afraid to change them, they are meant
+# to.  However, just for precaution, get the habit of comenting
+# the original lines rather than overwriting them.  It'll do you
+# nothing but good... ;)
+
+# Some configurable parameters and their meaning:
+
+# $upperlimit   => mailbox size limit (read from postfix config file)
+
+# $astepaway  => really close to a full mailbox
+
+# $root     => administrative email account.  Will receive notifications
+#              from the program about mailboxes going astray
+
+# $warndayslim =>   limit of days between one warning and another.
+#                   For users with mailboxes above 50% and below $astepaway
+
+# $alertdayslim => limit of days between one alert and another.
+#                  For users with mailboxes getting close to the limit.
+#                  Should be higher than 50%
+
+# In order to test, once more i advise that you comment out
+# the lines rather than overwriting them.
+
+# Comment out the following line as well, during tests.
+
+#use warning;
+
+
+# A global structure for internal administrative accounting.
+# It's in charge of keeping track of the number of days
+# a user with mbox > 50% was last alerted
+# DON'T TOUCH IT UNLESS YOU'RE REWRITING THE CODE!
+my %accounts;
+
+# Many initializations
+#BEGIN {
+
+$version="0.0.6";
+
+print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n";
+
+# Some size units
+$kb=1024; 	        #kilobyte
+$mb=$kb*1024;	        #megabyte
+
+$uni=$kb;       #standard unit ($mb, default)
+
+# Mailbox size limit
+#$upperlimit=2*$kb;  # this line very obviously for test purposes only
+
+# Automatically reads in the limit from Postfix config file
+$upperlimit=`cat /etc/postfix/main.cf | grep -i mailbox_size_limit`;
+# extract the numeric field from the line read
+if ($upperlimit =~ /\d+/) { $upperlimit = int($&); }
+
+# Just a step away to $upperlimit: time to alert the administrative 
+# account that some accounts are almost without space.  In the hopes
+# that system administrators yells are more effective than irritating
+# mail messages. :)
+$astepaway = 6*$mb;
+
+# 50% of mbox limit
+$half=int($upperlimit/2);
+
+# almost there...
+$almosthere=int($upperlimit*85/100);
+
+print "Mailboxes size limit: $upperlimit bytes\n";
+
+# Number of times a day CRON (or any other scheduler) will run it:
+$cron=3;
+
+# Limit of days between one warning and another
+# for a user with mbox size above $half
+$warndayslim = 7; # 7 days
+
+print "Limit of days between notifications for mailboxes above $half%: $warndayslim\n";
+
+# this will make sense during administrative accounting
+# Yes, its ugly.  Ill try to fix that sometime...
+$warndayslim = 7*$cron;
+
+# Limit of days between one alert and another
+# for users with mbox above $almosthere
+$alertdayslim = 2;
+
+print "Limit of days between notifications for mailboxes closer to the limit ($almosthere bytes): $alertdayslim\n\n";
+# sorry, again
+$alertdayslim = 2*$cron;
+
+# mail codes to be executed when mailbox above some limits
+# mailto later
+$code1='mail -s "Warning: Mailbox above $half%"';
+$code2='mail -s "Alert: Mailbox getting closer to the limit."';
+
+#    print "Utilized mail codes: \n";
+#    print "$code1\n";
+#    print "$code2\n\n";
+
+# Mailbox spool directory
+# Normally, /var/spool/mail
+$dir="/var/spool/mail/";
+
+print "Mailbox Spool: $dir\n";
+
+# Get the names of users from the names of mailboxes
+# from $dir through pipe
+open(DIR, "ls -l $dir|");
+
+# Name of the file connecting user names to email accounts
+$usermail="/etc/postfix/virtual";
+
+print "File holding username/mail accounts connections: $usermail\n";
+
+# An internal usage file to store accountability information
+# about mailboxes above $half
+$accountbility='/etc/postfix/accountbility';
+
+# the format of said file will be something in the lines of:
+# email@domain    126047932    5
+# emai2@domain    32754235     2
+# where:
+# column 1 is the infringing user email whose mbox is above $half
+# column 2 is the mailbox file size since the previous verification (bytes)
+# column 3 is the number of days (fixed unit, damn! thats why we had to multiply by $cron, remember?) since the user was last warned or alerted
+
+# If there already exists an accountability file, read entries from it
+if (open(ACC, $accountbility)){
+print "\nReading from previous administrative entries from $accountbility\n";
+  while(<ACC>){
+    my($eml, $tm, $dias) = split(/\s+/);
+    $accounts{$eml} = [ int($tm), int($dias) ];
+print "Email: $eml, Tamanho: $accounts{$eml}->[0], Dias: $accounts{$eml}->[1]\n";
+  }
+  close(ACC);
+print "Closing administrative accountability file: $accountbility\n\n";
+}
+
+
+# The lines returned by $usermail through pipe will be
+# decomposed in fields
+# Three of these are:
+
+our $owner=2; # the username of the mbox owner, while not getting used
+our $mboxsize=4;  # the fourth field representing the mbox file size
+our $mboxfname=8; # the eightieth field as returned by the pipe is the mbox file name
+
+# Read from pipe the email accounts from users
+print "Reading the email accounts from $usermail\n";
+
+open(ARQ, "cat $usermail | sort |");
+while(<ARQ>){
+    my($email, @user) = split(/[\s+|,+]+/);
+    $email{$user[0]} = $email if $#user == 0; # if an user has more than one email account, only the first one found will get notifications from the other mboxes
+    print "Email do usuario $user[0]: $email{$user[0]}\n" if $#user == 0;
+}
+close ARQ; #print "All email accounts accounted\n\n";
+
+
+# Text file containing the standard notification message
+# to infringing mboxes.  Change it to the file you prefer
+$msg="/etc/postfix/mboxfull";
+
+# Administrative email account in charge of all others
+$root='ricardo@iprestech.net';
+#$root='your_email@your_domain';
+
+print "<<<<<<<<<<<<<<<End of initialization section>>>>>>>>>>>>>>>\n\n";
+#} # end of inits
+
+
+
+# <<<<<<<<<<<<<<< Operational routine >>>>>>>>>>>>>>>>>
+
+print "Getting mailboxes from $dir\n";
+
+while(<DIR>){
+
+# A structure holding the line fields from the line read.
+# Comment out, in case you use perl -an (which i was,
+# but was getting problems with var scoping inside those
+# BEGIN and END blocks)
+local (@F) = split;
+
+# Goes to next line, if mbox doesnt have a related email account.
+# Mere precaution
+next if not defined $email{$F[$mboxfname]};
+
+print "Email being analized: $email{$F[$mboxfname]}\n";
+
+# if mailbox between $half and $almosthere, duh
+if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
+print "$email{$F[$mboxfname]} mailbox above half of mbox limit\n";
+
+    $com=qq($code1 $email{$F[$mboxfname]} < $msg);
+
+    # first, search $accountbility for any previous entry
+    # in the accountbility file
+print "Searching for any previous entry for $email{$F[$mboxfname]}. ";
+  if (defined %accounts) {
+
+    # if there already exists an entry for this email
+    # and the mbox file size changed
+    if ((defined $accounts{$email{$F[$mboxfname]}})
+and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
+      # if days gone since last notification > $warndayslim, send another
+      if ($accounts{$email{$F[$mboxfname]}}->[1] > $warndayslim){
+	`$com`;
+	$accounts{$email{$F[$mboxfname]}}->[1] = 0;
+      } # else, update accountbility: one more day
+      else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
+    }
+
+    # if there still isn't an entry for this user...
+    else {
+print "No previous entry found.  Generating one. \n";
+      # Send notification...
+      `$com`;
+      # ... and updates accountbility
+      $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+    }
+  } # defined %accounts
+
+  # accountbility still empty, let's fill it and send notification
+  else {
+print "Administrative accounts undefined: defining now: ";
+    $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+    `$com`;
+print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0\n";
+  } # fim
+
+}
+
+# else, if larger than $almosthere and below the mbox limit
+elsif ((int($F[$mboxsize]) >= $almosthere) and (int($F[$mboxsize]) < $upperlimit)) {
+print "$email{$F[$mboxfname]} mailbox getting close to the limit\n";
+
+    $com=qq($code2 $email{$F[$mboxfname]} < $msg);
+
+print "Looking for any previous entry for $email{$F[$mboxfname]}. ";
+  if (defined %accounts) {
+
+    # if there already is an entry for that user and mbox file changed
+    if ((defined $accounts{$email{$F[$mboxfname]}})
+and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
+      # if days gone by since last notification > $alertdayslim, send another
+      if ($accounts{$email{$F[$mboxfname]}}->[1] > $alertdayslim){
+	`$com`;
+	$accounts{$email{$F[$mboxfname]}}->[1] = 0;
+      }
+      #print "else, update accountbility";
+      else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
+    } #print "if there still isn't an entry for this user...";
+    else {
+print "No previous entry found.  Generating one. \n";
+      # send notification...
+      `$com`;
+      # ... and update accountbility
+      $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+    }
+  }
+
+  # accountbility still empty, let's fill it
+  else {
+print "Accounts undefined: defining now!\n";
+    $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+    `$com`;
+print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0";
+  } # fim
+
+}
+
+# lastly, if mailbox is about to get to the limit,
+# mail $root about it and expect for the best... :)
+if (int($F[$mboxsize]) > ($upperlimit - $astepaway)) {
+    $com=qq(mail -s "$email{$F[$mboxfname]} ($F[$mboxfname]) a step away from mbox limit: Mailbox utilizing $F[$mboxsize] bytes!" $root < $msg);
+    `$com`;
+    if (not defined $accounts{$email{$F[$mboxfname]}}){
+print "Accounts undefined: defining now!\n";
+      $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0 ];
+  }
+} #elsif
+} #while DIR
+close DIR;
+
+
+# Some last details
+
+#END { 
+print "\n<<<<<<<<<<<Finalizing>>>>>>>>>>\n";
+print "Updating the accountbility administrative file\n";
+
+#print "Undefined administrative structure\n" if not defined %accounts;
+
+  open(ACCOUNTS, ">$accountbility");
+  foreach my $k (keys %accounts) {
+    print ACCOUNTS "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n";
+    print "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n";
+  }
+  close(ACCOUNTS);
+
+print "Closing the accountbility administrative file\n";
+print "<<<<<<<<<<<The End>>>>>>>>>>\n";
+#}
