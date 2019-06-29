@@ -88,8 +88,8 @@ if ($cli_args{h})
     print "\n";
     print "Options:\n";
     print "\n";
-    print "  -v       verbose output\n";
     print "  -h       display this help and exit\n";
+    print "  -v       verbose output\n";
     print "\n";
     print "\n";
     print "This is available from github: <https://github.com/tedkotz/postmmon>\n";
@@ -99,7 +99,7 @@ if ($cli_args{h})
     exit;
 }
 
-print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n" if defined $options{v};
+print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n" if defined $cli_args{v};
 
 # Some size units
 $kb=1024;           #kilobyte
@@ -118,7 +118,7 @@ if ($upperlimit =~ /\d+/) { $upperlimit = int($&); }
 $defaulthostname=`cat /etc/postfix/main.cf | grep -i "^ *myhostname *="`;
 if ($defaulthostname =~ m/= \s* (\S+)/x) { $defaulthostname =$1; }
 
-print "Default host name: $defaulthostname \n" if defined $options{v};
+print "Default host name: $defaulthostname \n" if defined $cli_args{v};
 
 # Just a step away to $upperlimit: time to alert the administrative 
 # account that some accounts are almost without space.  In the hopes
@@ -132,7 +132,7 @@ $half=int($upperlimit/2);
 # almost there...
 $almosthere=int($upperlimit*95/100);
 
-print "Mailboxes size limit: $upperlimit bytes\n" if defined $options{v};
+print "Mailboxes size limit: $upperlimit bytes\n" if defined $cli_args{v};
 
 # Number of times a day CRON (or any other scheduler) will run it:
 $cron=3;
@@ -141,7 +141,7 @@ $cron=3;
 # for a user with mbox size above $half
 $warndayslim = 7; # 7 days
 
-print "Limit of days between notifications for mailboxes above $half%: $warndayslim\n" if defined $options{v};
+print "Limit of days between notifications for mailboxes above $half%: $warndayslim\n" if defined $cli_args{v};
 
 # this will make sense during administrative accounting
 # Yes, its ugly.  Ill try to fix that sometime...
@@ -151,7 +151,7 @@ $warndayslim = 7*$cron;
 # for users with mbox above $almosthere
 $alertdayslim = 2;
 
-print "Limit of days between notifications for mailboxes closer to the limit ($almosthere bytes): $alertdayslim\n\n" if defined $options{v};
+print "Limit of days between notifications for mailboxes closer to the limit ($almosthere bytes): $alertdayslim\n\n" if defined $cli_args{v};
 # sorry, again
 $alertdayslim = 2*$cron;
 
@@ -160,15 +160,15 @@ $alertdayslim = 2*$cron;
 $code1='mail -s "Warning: Mailbox above half."';
 $code2='mail -s "Alert: Mailbox getting closer to the limit."';
 
-#    print "Utilized mail codes: \n"  if defined $options{v};
-#    print "$code1\n"  if defined $options{v};
-#    print "$code2\n\n" if defined $options{v};
+#    print "Utilized mail codes: \n"  if defined $cli_args{v};
+#    print "$code1\n"  if defined $cli_args{v};
+#    print "$code2\n\n" if defined $cli_args{v};
 
 # Mailbox spool directory
 # Normally, /var/spool/mail
 $dir="/var/spool/mail/";
 
-print "Mailbox Spool: $dir\n"  if defined $options{v};
+print "Mailbox Spool: $dir\n"  if defined $cli_args{v};
 
 # Get the names of users from the names of mailboxes
 # from $dir through pipe
@@ -177,7 +177,7 @@ open(DIR, "ls -l $dir|");
 # Name of the file connecting user names to email accounts
 $usermail="/etc/postfix/virtual";
 
-print "File holding username/mail accounts connections: $usermail\n" if defined $options{v};
+print "File holding username/mail accounts connections: $usermail\n" if defined $cli_args{v};
 
 # An internal usage file to store accountability information
 # about mailboxes above $half
@@ -193,14 +193,14 @@ $accountbility='/etc/postfix/accountbility';
 
 # If there already exists an accountability file, read entries from it
 if (open(ACC, $accountbility)){
-  print "\nReading from previous administrative entries from $accountbility\n" if defined $options{v};
+  print "\nReading from previous administrative entries from $accountbility\n" if defined $cli_args{v};
   while(<ACC>){
     my($eml, $tm, $dias) = split(/\s+/);
     $accounts{$eml} = [ int($tm), int($dias) ];
-    print "Email: $eml, Tamanho: $accounts{$eml}->[0], Dias: $accounts{$eml}->[1]\n" if defined $options{v};
+    print "Email: $eml, Tamanho: $accounts{$eml}->[0], Dias: $accounts{$eml}->[1]\n" if defined $cli_args{v};
   }
   close(ACC);
-  print "Closing administrative accountability file: $accountbility\n\n" if defined $options{v};
+  print "Closing administrative accountability file: $accountbility\n\n" if defined $cli_args{v};
 }
 
 
@@ -213,15 +213,15 @@ our $mboxsize=4;  # the fourth field representing the mbox file size
 our $mboxfname=8; # the eightieth field as returned by the pipe is the mbox file name
 
 # Read from pipe the email accounts from users
-print "Reading the email accounts from $usermail\n" if defined $options{v};
+print "Reading the email accounts from $usermail\n" if defined $cli_args{v};
 
 open(ARQ, "cat $usermail | sort |");
 while(<ARQ>){
     my($email, @user) = split(/[\s+|,+]+/);
     $email{$user[0]} = $email if $#user == 0; # if an user has more than one email account, only the first one found will get notifications from the other mboxes
-    print "Email do usuario $user[0]: $email{$user[0]}\n" if ($#user == 0) and (defined $options{v});
+    print "Email do usuario $user[0]: $email{$user[0]}\n" if ($#user == 0) and (defined $cli_args{v});
 }
-close ARQ; #print "All email accounts accounted\n\n" if defined $options{v};
+close ARQ; #print "All email accounts accounted\n\n" if defined $cli_args{v};
 
 
 # Text file containing the standard notification message
@@ -233,14 +233,14 @@ $root="postmaster\@$defaulthostname";
 #$root='ricardo@iprestech.net';
 #$root='your_email@your_domain';
 
-print "<<<<<<<<<<<<<<<End of initialization section>>>>>>>>>>>>>>>\n\n" if defined $options{v};
+print "<<<<<<<<<<<<<<<End of initialization section>>>>>>>>>>>>>>>\n\n" if defined $cli_args{v};
 #} # end of inits
 
 
 
 # <<<<<<<<<<<<<<< Operational routine >>>>>>>>>>>>>>>>>
 
-print "Getting mailboxes from $dir\n" if defined $options{v};
+print "Getting mailboxes from $dir\n" if defined $cli_args{v};
 
 while(<DIR>){
 
@@ -259,17 +259,17 @@ if (not defined $email{$F[$mboxfname]}) {
     $email{$F[$mboxfname]} = "$F[$mboxfname]\@$defaulthostname";
 }
 
-print "Email being analized: $email{$F[$mboxfname]}\n" if defined $options{v};
+print "Email being analized: $email{$F[$mboxfname]}\n" if defined $cli_args{v};
 
 # if mailbox between $half and $almosthere, duh
 if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
-    print "$email{$F[$mboxfname]} mailbox above half of mbox limit\n" if defined $options{v};
+    print "$email{$F[$mboxfname]} mailbox above half of mbox limit\n" if defined $cli_args{v};
 
     $com=qq($code1 $email{$F[$mboxfname]} < $msg);
 
     # first, search $accountbility for any previous entry
     # in the accountbility file
-    print "Searching for any previous entry for $email{$F[$mboxfname]}. " if defined $options{v};
+    print "Searching for any previous entry for $email{$F[$mboxfname]}. " if defined $cli_args{v};
   if (%accounts) {
 
     # if there already exists an entry for this email
@@ -286,7 +286,7 @@ if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
 
     # if there still isn't an entry for this user...
     else {
-      print "No previous entry found.  Generating one. \n" if defined $options{v};
+      print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
       # Send notification...
       `$com`;
       # ... and updates accountbility
@@ -296,21 +296,21 @@ if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
 
   # accountbility still empty, let's fill it and send notification
   else {
-    print "Administrative accounts undefined: defining now: " if defined $options{v};
+    print "Administrative accounts undefined: defining now: " if defined $cli_args{v};
     $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
     `$com`;
-    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0\n" if defined $options{v};
+    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0\n" if defined $cli_args{v};
   } # fim
 
 }
 
 # else, if larger than $almosthere and below the mbox limit
 elsif ((int($F[$mboxsize]) >= $almosthere) and (int($F[$mboxsize]) < $upperlimit)) {
-    print "$email{$F[$mboxfname]} mailbox getting close to the limit\n" if defined $options{v};
+    print "$email{$F[$mboxfname]} mailbox getting close to the limit\n" if defined $cli_args{v};
 
     $com=qq($code2 $email{$F[$mboxfname]} < $msg);
 
-    print "Looking for any previous entry for $email{$F[$mboxfname]}. " if defined $options{v};
+    print "Looking for any previous entry for $email{$F[$mboxfname]}. " if defined $cli_args{v};
   if (%accounts) {
 
     # if there already is an entry for that user and mbox file changed
@@ -321,11 +321,11 @@ and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
 	`$com`;
 	$accounts{$email{$F[$mboxfname]}}->[1] = 0;
       }
-      #print "else, update accountbility" if defined $options{v};
+      #print "else, update accountbility" if defined $cli_args{v};
       else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
-    } #print "if there still isn't an entry for this user..." if defined $options{v};
+    } #print "if there still isn't an entry for this user..." if defined $cli_args{v};
     else {
-      print "No previous entry found.  Generating one. \n" if defined $options{v};
+      print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
       # send notification...
       `$com`;
       # ... and update accountbility
@@ -335,10 +335,10 @@ and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
 
   # accountbility still empty, let's fill it
   else {
-    print "Accounts undefined: defining now!\n" if defined $options{v};
+    print "Accounts undefined: defining now!\n" if defined $cli_args{v};
     $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
     `$com`;
-    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0" if defined $options{v};
+    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0" if defined $cli_args{v};
   } # fim
 
 }
@@ -349,7 +349,7 @@ if (int($F[$mboxsize]) > ($upperlimit - $astepaway)) {
     $com=qq(mail -s "$email{$F[$mboxfname]} ($F[$mboxfname]) a step away from mbox limit: Mailbox utilizing $F[$mboxsize] bytes!" $root < $msg);
     `$com`;
     if (not defined $accounts{$email{$F[$mboxfname]}}){
-      print "Accounts undefined: defining now!\n" if defined $options{v};
+      print "Accounts undefined: defining now!\n" if defined $cli_args{v};
       $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0 ];
   }
 } #elsif
@@ -360,18 +360,18 @@ close DIR;
 # Some last details
 
 #END { 
-print "\n<<<<<<<<<<<Finalizing>>>>>>>>>>\n" if defined $options{v};
-print "Updating the accountbility administrative file\n" if defined $options{v};
+print "\n<<<<<<<<<<<Finalizing>>>>>>>>>>\n" if defined $cli_args{v};
+print "Updating the accountbility administrative file\n" if defined $cli_args{v};
 
 #print "Undefined administrative structure\n" if not %accounts;
 
   open(ACCOUNTS, ">$accountbility");
   foreach my $k (keys %accounts) {
     print ACCOUNTS "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n";
-    print "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n" if defined $options{v};
+    print "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n" if defined $cli_args{v};
   }
   close(ACCOUNTS);
 
-print "Closing the accountbility administrative file\n" if defined $options{v};
-print "<<<<<<<<<<<The End>>>>>>>>>>\n" if defined $options{v};
+print "Closing the accountbility administrative file\n" if defined $cli_args{v};
+print "<<<<<<<<<<<The End>>>>>>>>>>\n" if defined $cli_args{v};
 #}
