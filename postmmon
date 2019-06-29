@@ -45,7 +45,8 @@
 # $astepaway  => really close to a full mailbox
 
 # $root     => administrative email account.  Will receive notifications
-#              from the program about mailboxes going astray
+#              from the program about mailboxes going astray. The defualt design
+#              assumes postmaster@default.domain
 
 # $warndayslim =>   limit of days between one warning and another.
 #                   For users with mailboxes above 50% and below $astepaway
@@ -76,8 +77,8 @@ $version="0.0.6";
 print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n";
 
 # Some size units
-$kb=1024; 	        #kilobyte
-$mb=$kb*1024;	        #megabyte
+$kb=1024;           #kilobyte
+$mb=$kb*1024;       #megabyte
 
 $uni=$kb;       #standard unit ($mb, default)
 
@@ -89,6 +90,11 @@ $upperlimit=`cat /etc/postfix/main.cf | grep -i mailbox_size_limit`;
 # extract the numeric field from the line read
 if ($upperlimit =~ /\d+/) { $upperlimit = int($&); }
 
+$defaulthostname=`cat /etc/postfix/main.cf | grep -i "^ *myhostname *="`;
+if ($defaulthostname =~ m/= \s* (\S+)/x) { $defaulthostname =$1; }
+
+print "Default host name: $defaulthostname \n";
+
 # Just a step away to $upperlimit: time to alert the administrative 
 # account that some accounts are almost without space.  In the hopes
 # that system administrators yells are more effective than irritating
@@ -99,7 +105,7 @@ $astepaway = 6*$mb;
 $half=int($upperlimit/2);
 
 # almost there...
-$almosthere=int($upperlimit*85/100);
+$almosthere=int($upperlimit*95/100);
 
 print "Mailboxes size limit: $upperlimit bytes\n";
 
@@ -126,7 +132,7 @@ $alertdayslim = 2*$cron;
 
 # mail codes to be executed when mailbox above some limits
 # mailto later
-$code1='mail -s "Warning: Mailbox above $half%"';
+$code1='mail -s "Warning: Mailbox above half."';
 $code2='mail -s "Alert: Mailbox getting closer to the limit."';
 
 #    print "Utilized mail codes: \n";
@@ -198,7 +204,8 @@ close ARQ; #print "All email accounts accounted\n\n";
 $msg="/etc/postfix/mboxfull";
 
 # Administrative email account in charge of all others
-$root='ricardo@iprestech.net';
+$root="postmaster\@$defaulthostname";
+#$root='ricardo@iprestech.net';
 #$root='your_email@your_domain';
 
 print "<<<<<<<<<<<<<<<End of initialization section>>>>>>>>>>>>>>>\n\n";
@@ -220,7 +227,12 @@ local (@F) = split;
 
 # Goes to next line, if mbox doesnt have a related email account.
 # Mere precaution
-next if not defined $email{$F[$mboxfname]};
+
+next if not defined $F[$mboxfname];
+
+if (not defined $email{$F[$mboxfname]}) {
+    $email{$F[$mboxfname]} = "$F[$mboxfname]\@$defaulthostname";
+}
 
 print "Email being analized: $email{$F[$mboxfname]}\n";
 
@@ -233,7 +245,7 @@ print "$email{$F[$mboxfname]} mailbox above half of mbox limit\n";
     # first, search $accountbility for any previous entry
     # in the accountbility file
 print "Searching for any previous entry for $email{$F[$mboxfname]}. ";
-  if (defined %accounts) {
+  if (%accounts) {
 
     # if there already exists an entry for this email
     # and the mbox file size changed
@@ -255,7 +267,7 @@ print "No previous entry found.  Generating one. \n";
       # ... and updates accountbility
       $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
     }
-  } # defined %accounts
+  } # %accounts
 
   # accountbility still empty, let's fill it and send notification
   else {
@@ -274,7 +286,7 @@ print "$email{$F[$mboxfname]} mailbox getting close to the limit\n";
     $com=qq($code2 $email{$F[$mboxfname]} < $msg);
 
 print "Looking for any previous entry for $email{$F[$mboxfname]}. ";
-  if (defined %accounts) {
+  if (%accounts) {
 
     # if there already is an entry for that user and mbox file changed
     if ((defined $accounts{$email{$F[$mboxfname]}})
@@ -326,7 +338,7 @@ close DIR;
 print "\n<<<<<<<<<<<Finalizing>>>>>>>>>>\n";
 print "Updating the accountbility administrative file\n";
 
-#print "Undefined administrative structure\n" if not defined %accounts;
+#print "Undefined administrative structure\n" if not %accounts;
 
   open(ACCOUNTS, ">$accountbility");
   foreach my $k (keys %accounts) {
