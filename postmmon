@@ -61,7 +61,7 @@
 # Comment out the following line as well, during tests.
 
 #use warning;
-#use strict;
+use strict;
 use Getopt::Std;
 
 # A global structure for internal administrative accounting.
@@ -69,14 +69,16 @@ use Getopt::Std;
 # a user with mbox > 50% was last alerted
 # DON'T TOUCH IT UNLESS YOU'RE REWRITING THE CODE!
 my %accounts;
+my %email;
 
 # declare the perl command line flags we want to allow
 my %cli_args=();
 
+
 # Many initializations
 #BEGIN {
 
-$version="0.0.7";
+my $version="0.0.7";
 
 getopts("hv", \%cli_args);
 
@@ -102,20 +104,20 @@ if ($cli_args{h})
 print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n" if defined $cli_args{v};
 
 # Some size units
-$kb=1024;           #kilobyte
-$mb=$kb*1024;       #megabyte
+my $kb=1024;           #kilobyte
+my $mb=$kb*1024;       #megabyte
 
-$uni=$kb;       #standard unit ($mb, default)
+my $uni=$kb;       #standard unit ($mb, default)
 
 # Mailbox size limit
 #$upperlimit=2*$kb;  # this line very obviously for test purposes only
 
 # Automatically reads in the limit from Postfix config file
-$upperlimit=`cat /etc/postfix/main.cf | grep -i mailbox_size_limit`;
+my $upperlimit=`cat /etc/postfix/main.cf | grep -i mailbox_size_limit`;
 # extract the numeric field from the line read
 if ($upperlimit =~ /\d+/) { $upperlimit = int($&); }
 
-$defaulthostname=`cat /etc/postfix/main.cf | grep -i "^ *myhostname *="`;
+my $defaulthostname=`cat /etc/postfix/main.cf | grep -i "^ *myhostname *="`;
 if ($defaulthostname =~ m/= \s* (\S+)/x) { $defaulthostname =$1; }
 
 print "Default host name: $defaulthostname \n" if defined $cli_args{v};
@@ -124,22 +126,22 @@ print "Default host name: $defaulthostname \n" if defined $cli_args{v};
 # account that some accounts are almost without space.  In the hopes
 # that system administrators yells are more effective than irritating
 # mail messages. :)
-$astepaway = 6*$mb;
+my $astepaway = 6*$mb;
 
 # 50% of mbox limit
-$half=int($upperlimit/2);
+my $half=int($upperlimit/2);
 
 # almost there...
-$almosthere=int($upperlimit*95/100);
+my $almosthere=int($upperlimit*95/100);
 
 print "Mailboxes size limit: $upperlimit bytes\n" if defined $cli_args{v};
 
 # Number of times a day CRON (or any other scheduler) will run it:
-$cron=3;
+my $cron=3;
 
 # Limit of days between one warning and another
 # for a user with mbox size above $half
-$warndayslim = 7; # 7 days
+my $warndayslim = 7; # 7 days
 
 print "Limit of days between notifications for mailboxes above $half%: $warndayslim\n" if defined $cli_args{v};
 
@@ -149,7 +151,7 @@ $warndayslim = 7*$cron;
 
 # Limit of days between one alert and another
 # for users with mbox above $almosthere
-$alertdayslim = 2;
+my $alertdayslim = 2;
 
 print "Limit of days between notifications for mailboxes closer to the limit ($almosthere bytes): $alertdayslim\n\n" if defined $cli_args{v};
 # sorry, again
@@ -157,8 +159,8 @@ $alertdayslim = 2*$cron;
 
 # mail codes to be executed when mailbox above some limits
 # mailto later
-$code1='mail -s "Warning: Mailbox above half."';
-$code2='mail -s "Alert: Mailbox getting closer to the limit."';
+my $code1='mail -s "Warning: Mailbox above half."';
+my $code2='mail -s "Alert: Mailbox getting closer to the limit."';
 
 #    print "Utilized mail codes: \n"  if defined $cli_args{v};
 #    print "$code1\n"  if defined $cli_args{v};
@@ -166,7 +168,7 @@ $code2='mail -s "Alert: Mailbox getting closer to the limit."';
 
 # Mailbox spool directory
 # Normally, /var/spool/mail
-$dir="/var/spool/mail/";
+my $dir="/var/spool/mail/";
 
 print "Mailbox Spool: $dir\n"  if defined $cli_args{v};
 
@@ -175,13 +177,13 @@ print "Mailbox Spool: $dir\n"  if defined $cli_args{v};
 open(DIR, "ls -l $dir|");
 
 # Name of the file connecting user names to email accounts
-$usermail="/etc/postfix/virtual";
+my $usermail="/etc/postfix/virtual";
 
 print "File holding username/mail accounts connections: $usermail\n" if defined $cli_args{v};
 
 # An internal usage file to store accountability information
 # about mailboxes above $half
-$accountbility='/etc/postfix/accountbility';
+my $accountbility='/etc/postfix/accountbility';
 
 # the format of said file will be something in the lines of:
 # email@domain    126047932    5
@@ -226,10 +228,10 @@ close ARQ; #print "All email accounts accounted\n\n" if defined $cli_args{v};
 
 # Text file containing the standard notification message
 # to infringing mboxes.  Change it to the file you prefer
-$msg="/etc/postfix/mboxfull";
+my $msg="/etc/postfix/mboxfull";
 
 # Administrative email account in charge of all others
-$root="postmaster\@$defaulthostname";
+my $root="postmaster\@$defaulthostname";
 #$root='ricardo@iprestech.net';
 #$root='your_email@your_domain';
 
@@ -248,7 +250,8 @@ while(<DIR>){
   # Comment out, in case you use perl -an (which i was,
   # but was getting problems with var scoping inside those
   # BEGIN and END blocks)
-  local (@F) = split;
+  my (@F) = split;
+  my $com;
   
   # Goes to next line, if mbox doesnt have a related email account.
   # Mere precaution
