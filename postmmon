@@ -82,21 +82,21 @@ getopts("hv", \%cli_args);
 
 if ($cli_args{h})
 {
-    print "postmmon v.$version\n\n";
-    print "Usage: postmmon [OPTION]\n";
-    print "Postfix Mail Box Monitor. This sends mail notifications when a user has too much mail.\n";
-    print "\n";
-    print "Options:\n";
-    print "\n";
-    print "  -h       display this help and exit\n";
-    print "  -v       verbose output\n";
-    print "\n";
-    print "\n";
-    print "This is available from github: <https://github.com/tedkotz/postmmon>\n";
-    print "\n";
-    print "Derived from a tool written by Eduardo Mendes and Ricardo Malafaia.\n";
-    print "The original code can be downloaded here: <http://www.cpan.org/modules/by-authors/id/R/RM/RMALAFAIA/postmmon/postmmon_v.0.0.6>\n";
-    exit;
+  print "postmmon v.$version\n\n";
+  print "Usage: postmmon [OPTION]\n";
+  print "Postfix Mail Box Monitor. This sends mail notifications when a user has too much mail.\n";
+  print "\n";
+  print "Options:\n";
+  print "\n";
+  print "  -h       display this help and exit\n";
+  print "  -v       verbose output\n";
+  print "\n";
+  print "\n";
+  print "This is available from github: <https://github.com/tedkotz/postmmon>\n";
+  print "\n";
+  print "Derived from a tool written by Eduardo Mendes and Ricardo Malafaia.\n";
+  print "The original code can be downloaded here: <http://www.cpan.org/modules/by-authors/id/R/RM/RMALAFAIA/postmmon/postmmon_v.0.0.6>\n";
+  exit;
 }
 
 print "<<<<<<<<<<<<<<<Initializing postmmon v.$version>>>>>>>>>>>>>>\n\n" if defined $cli_args{v};
@@ -217,9 +217,9 @@ print "Reading the email accounts from $usermail\n" if defined $cli_args{v};
 
 open(ARQ, "cat $usermail | sort |");
 while(<ARQ>){
-    my($email, @user) = split(/[\s+|,+]+/);
-    $email{$user[0]} = $email if $#user == 0; # if an user has more than one email account, only the first one found will get notifications from the other mboxes
-    print "Email do usuario $user[0]: $email{$user[0]}\n" if ($#user == 0) and (defined $cli_args{v});
+  my($email, @user) = split(/[\s+|,+]+/);
+  $email{$user[0]} = $email if $#user == 0; # if an user has more than one email account, only the first one found will get notifications from the other mboxes
+  print "Email do usuario $user[0]: $email{$user[0]}\n" if ($#user == 0) and (defined $cli_args{v});
 }
 close ARQ; #print "All email accounts accounted\n\n" if defined $cli_args{v};
 
@@ -243,116 +243,116 @@ print "<<<<<<<<<<<<<<<End of initialization section>>>>>>>>>>>>>>>\n\n" if defin
 print "Getting mailboxes from $dir\n" if defined $cli_args{v};
 
 while(<DIR>){
-
-# A structure holding the line fields from the line read.
-# Comment out, in case you use perl -an (which i was,
-# but was getting problems with var scoping inside those
-# BEGIN and END blocks)
-local (@F) = split;
-
-# Goes to next line, if mbox doesnt have a related email account.
-# Mere precaution
-
-next if not defined $F[$mboxfname];
-
-if (not defined $email{$F[$mboxfname]}) {
+  
+  # A structure holding the line fields from the line read.
+  # Comment out, in case you use perl -an (which i was,
+  # but was getting problems with var scoping inside those
+  # BEGIN and END blocks)
+  local (@F) = split;
+  
+  # Goes to next line, if mbox doesnt have a related email account.
+  # Mere precaution
+  
+  next if not defined $F[$mboxfname];
+  
+  if (not defined $email{$F[$mboxfname]}) {
     $email{$F[$mboxfname]} = "$F[$mboxfname]\@$defaulthostname";
-}
-
-print "Email being analized: $email{$F[$mboxfname]}\n" if defined $cli_args{v};
-
-# if mailbox between $half and $almosthere, duh
-if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
+  }
+  
+  print "Email being analized: $email{$F[$mboxfname]}\n" if defined $cli_args{v};
+  
+  # if mailbox between $half and $almosthere, duh
+  if ((int($F[$mboxsize]) >= $half) and (int($F[$mboxsize]) < $almosthere)) {
     print "$email{$F[$mboxfname]} mailbox above half of mbox limit\n" if defined $cli_args{v};
-
+    
     $com=qq($code1 $email{$F[$mboxfname]} < $msg);
-
+    
     # first, search $accountbility for any previous entry
     # in the accountbility file
     print "Searching for any previous entry for $email{$F[$mboxfname]}. " if defined $cli_args{v};
-  if (%accounts) {
-
-    # if there already exists an entry for this email
-    # and the mbox file size changed
-    if ((defined $accounts{$email{$F[$mboxfname]}})
+    if (%accounts) {
+      
+      # if there already exists an entry for this email
+      # and the mbox file size changed
+      if ((defined $accounts{$email{$F[$mboxfname]}})
         and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
-      # if days gone since last notification > $warndayslim, send another
-      if ($accounts{$email{$F[$mboxfname]}}->[1] > $warndayslim){
-	`$com`;
-	$accounts{$email{$F[$mboxfname]}}->[1] = 0;
-      } # else, update accountbility: one more day
-      else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
-    }
-
-    # if there still isn't an entry for this user...
+        # if days gone since last notification > $warndayslim, send another
+        if ($accounts{$email{$F[$mboxfname]}}->[1] > $warndayslim){
+          `$com`;
+          $accounts{$email{$F[$mboxfname]}}->[1] = 0;
+        } # else, update accountbility: one more day
+        else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
+        }
+        
+        # if there still isn't an entry for this user...
+        else {
+          print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
+          # Send notification...
+          `$com`;
+          # ... and updates accountbility
+          $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+        }
+    } # %accounts
+    
+    # accountbility still empty, let's fill it and send notification
     else {
-      print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
-      # Send notification...
-      `$com`;
-      # ... and updates accountbility
+      print "Administrative accounts undefined: defining now: " if defined $cli_args{v};
       $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
-    }
-  } # %accounts
-
-  # accountbility still empty, let's fill it and send notification
-  else {
-    print "Administrative accounts undefined: defining now: " if defined $cli_args{v};
-    $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
-    `$com`;
-    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0\n" if defined $cli_args{v};
-  } # fim
-
-}
-
-# else, if larger than $almosthere and below the mbox limit
-elsif ((int($F[$mboxsize]) >= $almosthere) and (int($F[$mboxsize]) < $upperlimit)) {
-    print "$email{$F[$mboxfname]} mailbox getting close to the limit\n" if defined $cli_args{v};
-
-    $com=qq($code2 $email{$F[$mboxfname]} < $msg);
-
-    print "Looking for any previous entry for $email{$F[$mboxfname]}. " if defined $cli_args{v};
-  if (%accounts) {
-
-    # if there already is an entry for that user and mbox file changed
-    if ((defined $accounts{$email{$F[$mboxfname]}})
-and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
-      # if days gone by since last notification > $alertdayslim, send another
-      if ($accounts{$email{$F[$mboxfname]}}->[1] > $alertdayslim){
-	`$com`;
-	$accounts{$email{$F[$mboxfname]}}->[1] = 0;
-      }
-      #print "else, update accountbility" if defined $cli_args{v};
-      else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
-    } #print "if there still isn't an entry for this user..." if defined $cli_args{v};
-    else {
-      print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
-      # send notification...
       `$com`;
-      # ... and update accountbility
-      $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
-    }
+      print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0\n" if defined $cli_args{v};
+    } # fim
+    
   }
-
-  # accountbility still empty, let's fill it
-  else {
-    print "Accounts undefined: defining now!\n" if defined $cli_args{v};
-    $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
-    `$com`;
-    print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0" if defined $cli_args{v};
-  } # fim
-
-}
-
-# lastly, if mailbox is about to get to the limit,
-# mail $root about it and expect for the best... :)
-if (int($F[$mboxsize]) > ($upperlimit - $astepaway)) {
+  
+  # else, if larger than $almosthere and below the mbox limit
+  elsif ((int($F[$mboxsize]) >= $almosthere) and (int($F[$mboxsize]) < $upperlimit)) {
+    print "$email{$F[$mboxfname]} mailbox getting close to the limit\n" if defined $cli_args{v};
+    
+    $com=qq($code2 $email{$F[$mboxfname]} < $msg);
+    
+    print "Looking for any previous entry for $email{$F[$mboxfname]}. " if defined $cli_args{v};
+    if (%accounts) {
+      
+      # if there already is an entry for that user and mbox file changed
+      if ((defined $accounts{$email{$F[$mboxfname]}})
+        and ($accounts{$email{$F[$mboxfname]}}->[0] != $F[$mboxsize])){
+        # if days gone by since last notification > $alertdayslim, send another
+        if ($accounts{$email{$F[$mboxfname]}}->[1] > $alertdayslim){
+          `$com`;
+          $accounts{$email{$F[$mboxfname]}}->[1] = 0;
+        }
+        #print "else, update accountbility" if defined $cli_args{v};
+        else { $accounts{$email{$F[$mboxfname]}}->[1] += 1; }
+        } #print "if there still isn't an entry for this user..." if defined $cli_args{v};
+        else {
+          print "No previous entry found.  Generating one. \n" if defined $cli_args{v};
+          # send notification...
+          `$com`;
+          # ... and update accountbility
+          $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+        }
+    }
+    
+    # accountbility still empty, let's fill it
+    else {
+      print "Accounts undefined: defining now!\n" if defined $cli_args{v};
+      $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0];
+      `$com`;
+      print "$email{$F[$mboxfname]}\t\t$F[$mboxsize]\t\t0" if defined $cli_args{v};
+    } # fim
+    
+  }
+  
+  # lastly, if mailbox is about to get to the limit,
+  # mail $root about it and expect for the best... :)
+  if (int($F[$mboxsize]) > ($upperlimit - $astepaway)) {
     $com=qq(mail -s "$email{$F[$mboxfname]} ($F[$mboxfname]) a step away from mbox limit: Mailbox utilizing $F[$mboxsize] bytes!" $root < $msg);
     `$com`;
     if (not defined $accounts{$email{$F[$mboxfname]}}){
       print "Accounts undefined: defining now!\n" if defined $cli_args{v};
       $accounts{$email{$F[$mboxfname]}} = [ $F[$mboxsize], 0 ];
-  }
-} #elsif
+    }
+  } #elsif
 } #while DIR
 close DIR;
 
@@ -365,12 +365,12 @@ print "Updating the accountbility administrative file\n" if defined $cli_args{v}
 
 #print "Undefined administrative structure\n" if not %accounts;
 
-  open(ACCOUNTS, ">$accountbility");
-  foreach my $k (keys %accounts) {
-    print ACCOUNTS "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n";
-    print "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n" if defined $cli_args{v};
-  }
-  close(ACCOUNTS);
+open(ACCOUNTS, ">$accountbility");
+foreach my $k (keys %accounts) {
+  print ACCOUNTS "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n";
+  print "$k\t\t$accounts{$k}->[0]\t$accounts{$k}->[1]\n" if defined $cli_args{v};
+}
+close(ACCOUNTS);
 
 print "Closing the accountbility administrative file\n" if defined $cli_args{v};
 print "<<<<<<<<<<<The End>>>>>>>>>>\n" if defined $cli_args{v};
