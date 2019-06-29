@@ -20,5 +20,5 @@ http://www.cpan.org/modules/by-authors/id/R/RM/RMALAFAIA/postmmon/postmmon_v.0.0
 5. Test run
 
 ## TODO
-* [ ] Incorporate changes from offline version
-* [ ] Add quiet/verbose mode
+* [X] Incorporate changes from offline version
+* [X] Add quiet/verbose mode
