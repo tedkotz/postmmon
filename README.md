@@ -19,6 +19,7 @@ http://www.cpan.org/modules/by-authors/id/R/RM/RMALAFAIA/postmmon/postmmon_v.0.0
 4. Create /etc/postfix/mboxfull
 5. Test run
 
-## TODO
-* [ ] Incorporate changes from offline version
-* [ ] Add quiet/verbose mode
+## TODO/Features
+* [X] Incorporate changes from offline version
+* [X] Add quiet/verbose mode
+* [ ] Future improvements
