@@ -183,7 +183,7 @@ print "File holding username/mail accounts connections: $usermail\n" if defined 
 
 # An internal usage file to store accountability information
 # about mailboxes above $half
-my $accountbility='/etc/postfix/accountbility';
+my $accountbility='/var/lib/postfix/postmmon-accountability';
 
 # the format of said file will be something in the lines of:
 # email@domain    126047932    5
